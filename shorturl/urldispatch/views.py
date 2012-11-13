@@ -8,6 +8,8 @@ from django.shortcuts import get_object_or_404
 from django.views.decorators.csrf import csrf_exempt
 from django.conf import settings
 from django.utils.timezone import now
+from django.contrib.auth.decorators import login_required
+
 import datetime
 import json
 import hashlib
@@ -17,6 +19,7 @@ import math
 from models import Url
 from forms import EditForm
 
+@login_required
 def home(request):
     return render_to_response("home.html", {}, context_instance=RequestContext(request))
 
@@ -38,6 +41,7 @@ def get_unique_id(url, username):
         except IOError:
             iteration += 1
 
+@login_required
 def edit_url(request, short_url):
     username = request.user.username
     object = get_object_or_404(Url, short_url=short_url)
@@ -70,6 +74,7 @@ def edit_url(request, short_url):
 
     return render_to_response("edit.html", {"form": form, "short_url": short_url}, context_instance=RequestContext(request))
 
+@login_required
 @csrf_exempt
 def add(request):
     username = request.user.username
