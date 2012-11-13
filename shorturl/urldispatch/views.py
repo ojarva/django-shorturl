@@ -39,7 +39,7 @@ def get_unique_id(url, username):
             iteration += 1
 
 def edit_url(request, short_url):
-    username = "test"
+    username = request.user.username
     object = get_object_or_404(Url, short_url=short_url)
     if object.owner != username:
         raise PermissionDenied("That's not your item")
@@ -72,7 +72,7 @@ def edit_url(request, short_url):
 
 @csrf_exempt
 def add(request):
-    username = "test"
+    username = request.user.username
     if request.method == 'POST':
         url = request.POST.get("long_url")
         if not url:
@@ -90,7 +90,7 @@ def redirect(request, short_url):
     return HttpResponseRedirect(item.destination_url)
 
 def your_items(request):
-    username = "test"
-    items = Url.objects.filter(owner=username)
+    username = request.user.username
+    items = Url.objects.filter(owner=username).filter(deleted=False)
     return render_to_response("your_items.html", {"items": items}, context_instance=RequestContext(request))
 
