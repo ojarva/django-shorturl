@@ -1,7 +1,7 @@
 import os
 
 SHORTURL_DOMAIN="futu.it"
-RESERVED_URLS = set(["admin", "edit", "add", "remove", "modify", "futurice", "futu", "items", "your-items", "login", "logout", "email", SHORTURL_DOMAIN])
+RESERVED_URLS = set(["admin", "edit", "add", "remove", "modify", "futurice", "futu", "items", "your-items", "login", "logout", "email", "static", "media", "images", SHORTURL_DOMAIN])
 
 # Django settings for shorturl project.
 
