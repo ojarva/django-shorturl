@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block header %}
+<script type="text/javascript">
+$(document).ready(function() {
+ var ab = $("#shorten");
+ $("#shorten").prop("disabled", true);
+ $("#long_url").keyup(function() {
+  if ($(this).val().length > 4) {
+   ab.prop("disabled", false);
+   ab.html("Go!");
+  } else {
+   ab.prop("disabled", true);
+   ab.html("Too short");
+  }
+ });
+
+ $("#short_url").click(function() {
+  $(this).select();
+ });
+
+ $("#shorten").click(function() {
+  ab.prop("disabled", true);
+  ab.html("Loading...");
+  var long_url = $("#long_url").val();
+  $.post("/add", {"long_url": long_url}, function(data, textStatus) {
+   ab.prop("disabled", false);
+   ab.html("Go!");
+   if (data.success == false) {
+    $("#warning-message").html(data.message);
+    $("#warning-message-box").show("fast");
+   } else {
+    $("#warning-message-box").hide("fast");
+    $("#shortened_url").show("fast");
+    $("#short_url").val(data.url);
+    $("#short_url").focus().select();
+   }
+  }, "json");
+ });
+});
+</script>
+
+{% endblock %}
+{% block content %}
+      <div class="jumbotron">
+        <h1>Enter URL</h1>
+
+<div id="warning-message-box" class="alert" style="display:none">
+  <strong>Warning!</strong> <span id="warning-message"></span>
+</div>
+
+
+<p>
+  <input class="span4" id="long_url" type="text" placeholder="Paste URL">
+</p>
+<p>
+  <button id="shorten" class="btn" type="button">Go!</button>
+</p>
+
+<div id="shortened_url" style="display:none">
+	<p>Shortened URL: </p>
+
+	<p><input class="span4" id="short_url" type="text"></p>
+
+</div>
+
+</div>
+
+{% endblock %}
