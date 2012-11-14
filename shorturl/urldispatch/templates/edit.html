@@ -2,8 +2,11 @@
 
 {% block content %}
 
-<h2>Item: {{ item.short_url }}</h2>
+<h2>Item: <a href="{{ item.get_short_url }}">{{ item.get_short_url }}</a></h2>
 
+{% ifnotequal item.short_url item.short_name %}
+<p>Alternatively, <a href="{{ item.get_short_name }}">{{ item.get_short_name }}</a></p>
+{% endifnotequal %}
 
 {% if item.status_current %}
 <p><a href="{{ item.get_destination_url }}">Destination URL</a> is up since {{ item.status_working_since }}.</p>
