@@ -3,15 +3,17 @@
 {% block header %}
 <script type="text/javascript">
 var validity_ajax;
-function set_vd_class(add_class) {
+function set_vd_class(add_class, title) {
  var vd = $("#validity-status");
  vd.removeClass().addClass(add_class);
+ $("#url_validation_status").data("tooltip").options.title = title;
 }
+
 function check_url_validity() {
  if (typeof validity_ajax != "undefined") {
   validity_ajax.abort();
  }
- set_vd_class("icon-refresh");
+ set_vd_class("icon-refresh", "Refreshing...");
  long_url = $("#long_url").val();
  validity_ajax = $.ajax({
     type: "POST",
@@ -20,19 +22,20 @@ function check_url_validity() {
     timeout: 2000,
     success: function(data) {
      if (data.valid) {
-       set_vd_class("icon-ok-sign");
+       set_vd_class("icon-ok-sign", "URL is valid and reachable");
      } else {
-       set_vd_class("icon-remove-sign");
+       set_vd_class("icon-remove-sign", "URL is invalid or not reachable");
      }
     },
     error: function() {
-     set_vd_class("icon-exclamation-sign");
+     set_vd_class("icon-exclamation-sign", "An error occured");
     },
     dataType: "json"
  });
 }
 
 $(document).ready(function() {
+ $("#url_validation_status").tooltip({title: "URL validation"});
  var ab = $("#shorten");
  $("#shorten").prop("disabled", true);
  $("#long_url").keyup(function() {
@@ -41,6 +44,9 @@ $(document).ready(function() {
    ab.prop("disabled", false);
    ab.html("Go!");
    check_url_validity();
+  } else if ($(this).val().length == 0) {
+   ab.prop("disabled", true);
+   ab.html("Paste URL");
   } else {
    ab.prop("disabled", true);
    ab.html("Too short");
@@ -99,7 +105,7 @@ $(document).ready(function() {
 <p>
 <div class="input-append">
   <input class="span4" id="long_url" type="text" placeholder="Paste URL">
-  <span class="add-on"><i id="validity-status" class="icon-question-sign"></i></span>
+  <span id="url_validation_status" class="add-on"><i id="validity-status" class="icon-question-sign"></i></span>
 </div>
 </p>
 <p>
