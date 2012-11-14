@@ -10,7 +10,6 @@ def get_destination_url(destination_url):
     parsed = urlparse(destination_url)
     if len(parsed.scheme) == 0:
         destination_url = "http://%s" % destination_url
-    print destination_url
     return destination_url
 
 def test_url(destination_url):
