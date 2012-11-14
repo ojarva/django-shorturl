@@ -172,3 +172,9 @@ LOGGING = {
         },
     }
 }
+
+
+try:
+    from local_settings import *
+except ImportError:
+    print "Warning: no local_settings.py available. Using default settings (domain: %s)" % SHORTURL_DOMAIN

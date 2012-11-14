@@ -1,29 +1,37 @@
+from django.conf import settings
+from django.contrib.auth.decorators import login_required
+from django.core.exceptions import PermissionDenied
+from django.core.urlresolvers import reverse
+from django.db import IntegrityError
 from django.forms.util import ErrorList
+from django.http import HttpResponse, HttpResponseRedirect, Http404
+from django.shortcuts import get_object_or_404
+from django.shortcuts import render_to_response
 from django.template import RequestContext
 from django.template.defaultfilters import slugify
-from django.core.exceptions import PermissionDenied
-from django.http import HttpResponse, HttpResponseRedirect
-from django.shortcuts import render_to_response
-from django.shortcuts import get_object_or_404
-from django.views.decorators.csrf import csrf_exempt
-from django.conf import settings
 from django.utils.timezone import now
-from django.contrib.auth.decorators import login_required
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods, require_POST, require_safe
 
 import datetime
-import json
 import hashlib
-import random
+import json
 import math
+import random
 
-from models import Url
+from decorators import *
 from forms import EditForm
+from models import Url
+from utils import test_url, get_destination_url
 
+@require_safe
 @login_required
+@render_to("home.html")
 def home(request):
-    return render_to_response("home.html", {}, context_instance=RequestContext(request))
+    return {}
 
 def get_unique_id(url, username):
+    """ Return new (saved) Url object with unique short URL """
     iteration = 0
     hdigest = "%s-%s" % (url, random.random())
     while True:
@@ -35,17 +43,21 @@ def get_unique_id(url, username):
         if iteration == 100:
             raise Exception("Can't find unique shorturl")
         try:
-            obj = Url.objects.create(short_url=short_url, short_name=short_url, owner=username, destination_url=url)
+            obj = Url.objects.create(short_url=short_url, short_name=short_url, username=username, destination_url=url)
             obj.save()
             return obj
-        except IOError:
+        except IntegrityError:
             iteration += 1
 
+@require_http_methods(["GET", "POST", "HEAD"])
 @login_required
+@render_to("edit.html")
 def edit_url(request, short_url):
     username = request.user.username
+
+    # Validation & authorization
     object = get_object_or_404(Url, short_url=short_url)
-    if object.owner != username:
+    if object.username != username:
         raise PermissionDenied("That's not your item")
 
     if request.method == "POST":
@@ -57,45 +69,69 @@ def edit_url(request, short_url):
 
            if short_name in settings.RESERVED_URLS:
                errors = form._errors.setdefault("short_name", ErrorList())
-               errors.append("Your short URL is reserved.")
-           elif short_name != object.short_url and len(short_name) < 5:
+               errors.append("That URL is reserved")
+           elif short_name != object.short_url and len(short_name) < 7:
                errors = form._errors.setdefault("short_name", ErrorList())
-               errors.append("That's too short (<5 characters)")
+               errors.append("That's too short (<7 characters)")
            elif (short_name != object.short_name and short_name_count > 0) or (short_name != object.short_url and short_url_count > 0):
                errors = form._errors.setdefault("short_name", ErrorList())
-               errors.append("Sorry! Your short URL already exists")
+               errors.append("Sorry! That URL already exists")
            else:
                object.short_name = short_name
-               object.deleted = form.cleaned_data["deleted"]
+               object.active = form.cleaned_data["active"]
                object.save()
-               form = EditForm({"short_name": object.short_name, "deleted": object.deleted})
+
+               # Form contents changed - recreate it to update page.
+               form = EditForm({"short_name": object.short_name, "active": object.active})
     else:
-        form = EditForm({"short_name": object.short_name, "deleted": object.deleted})
+        form = EditForm({"short_name": object.short_name, "active": object.active})
 
-    return render_to_response("edit.html", {"form": form, "short_url": short_url}, context_instance=RequestContext(request))
+    return {"item": object, "form": form, "short_url": short_url}
 
+@require_POST
 @login_required
 @csrf_exempt
+@ajax_request
+def urlcheck(request):
+    url = request.POST.get("long_url", None)
+    if not url:
+        return { "valid": False }
+    status = test_url(get_destination_url(url))
+    if status["status_current"]:
+        return { "valid": True }
+    return { "valid": False }
+
+
+@require_POST
+@login_required
+@csrf_exempt
+@ajax_request
 def add(request):
     username = request.user.username
-    if request.method == 'POST':
-        url = request.POST.get("long_url")
-        if not url:
-            return HttpResponse(json.dumps({"success": False, "message": "Invalid URL"}))
-        obj = get_unique_id(url, username)
-        return HttpResponse(json.dumps({"success": True, "url": "http://%s/%s" % (settings.SHORTURL_DOMAIN, obj.short_url)}))
-        
-    return HttpResponse(json.dumps({"success": False, "message": "Invalid request"}))
+    url = request.POST.get("long_url")
+    if not url:
+        return {"success": False, "message": "Invalid URL"}
 
+    try:
+        obj = Url.objects.get(destination_url=url)
+    except:
+        obj = get_unique_id(url, username)
+
+    return {"success": True, "url": "http://%s/%s" % (settings.SHORTURL_DOMAIN, obj.short_url), "edit_url": "/edit/%s" % obj.short_url }
+
+@require_safe
 def redirect(request, short_url):
     item = get_object_or_404(Url, short_url=short_url)
+    if not item.active:
+        raise Http404
     item.last_access = now()
-    item.views += 1
+    item.view_count += 1
     item.save()
-    return HttpResponseRedirect(item.destination_url)
+    return HttpResponseRedirect(item.get_destination_url())
 
+@require_safe
+@render_to("your_items.html")
 def your_items(request):
     username = request.user.username
-    items = Url.objects.filter(owner=username).filter(deleted=False)
-    return render_to_response("your_items.html", {"items": items}, context_instance=RequestContext(request))
-
+    items = Url.objects.filter(username=username).filter(active=True)
+    return {"items": items}

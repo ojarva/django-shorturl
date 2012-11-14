@@ -1,3 +1,4 @@
 syntax: glob
 *.pyc
 data.db
+local_settings.py

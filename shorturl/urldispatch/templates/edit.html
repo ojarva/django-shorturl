@@ -2,7 +2,18 @@
 
 {% block content %}
 
-<h2>Edit your item</h2>
+<h2>Item: {{ item.short_url }}</h2>
+
+
+{% if item.status_current %}
+<p><a href="{{ item.get_destination_url }}">Destination URL</a> is up since {{ item.status_working_since }}.</p>
+{% else %}
+ {% if item.status_last_error %}
+  <p><a href="{{ item.get_destination_url }}">Destination URL</a> is down{% if item.status_last_working %} since {{ item.status_last_working }}{% endif %}. Error recorded is <code>{{ item.status_last_error }}</code></p>
+ {% else %}
+  <p><a href="{{ item.get_destination_url }}">Destination URL</a> status is unknown.</p>
+ {% endif %}
+{% endif %}
 
 <form method="post" action="{% url edit short_url %}">
 

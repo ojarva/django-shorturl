@@ -2,13 +2,45 @@
 
 {% block header %}
 <script type="text/javascript">
+var validity_ajax;
+function set_vd_class(add_class) {
+ var vd = $("#validity-status");
+ vd.removeClass().addClass(add_class);
+}
+function check_url_validity() {
+ if (typeof validity_ajax != "undefined") {
+  validity_ajax.abort();
+ }
+ set_vd_class("icon-refresh");
+ long_url = $("#long_url").val();
+ validity_ajax = $.ajax({
+    type: "POST",
+    url: "/urlcheck",
+    data: {"long_url": long_url},
+    timeout: 2000,
+    success: function(data) {
+     if (data.valid) {
+       set_vd_class("icon-ok-sign");
+     } else {
+       set_vd_class("icon-remove-sign");
+     }
+    },
+    error: function() {
+     set_vd_class("icon-exclamation-sign");
+    },
+    dataType: "json"
+ });
+}
+
 $(document).ready(function() {
  var ab = $("#shorten");
  $("#shorten").prop("disabled", true);
  $("#long_url").keyup(function() {
+  $("#shortened_url").hide("fast");
   if ($(this).val().length > 4) {
    ab.prop("disabled", false);
    ab.html("Go!");
+   check_url_validity();
   } else {
    ab.prop("disabled", true);
    ab.html("Too short");
@@ -23,19 +55,33 @@ $(document).ready(function() {
   ab.prop("disabled", true);
   ab.html("Loading...");
   var long_url = $("#long_url").val();
-  $.post("/add", {"long_url": long_url}, function(data, textStatus) {
-   ab.prop("disabled", false);
-   ab.html("Go!");
-   if (data.success == false) {
-    $("#warning-message").html(data.message);
-    $("#warning-message-box").show("fast");
-   } else {
-    $("#warning-message-box").hide("fast");
-    $("#shortened_url").show("fast");
-    $("#short_url").val(data.url);
-    $("#short_url").focus().select();
-   }
-  }, "json");
+  $.ajax({
+    type: "POST",
+    url: "/add", 
+    timeout: 5000,
+    data: {"long_url": long_url}, 
+    success: function(data, textStatus) {
+      ab.prop("disabled", false);
+      ab.html("Go!");
+      if (data.success == false) {
+        $("#warning-message").html(data.message);
+        $("#warning-message-box").show("fast");
+      } else {
+        $("#warning-message-box").hide("fast");
+        $("#shortened_url").show("fast");
+        $("#short_url").val(data.url);
+        $("#short_url").focus().select();
+        $("#edit_short_url").attr("href", data.edit_url);
+      }
+    },
+    dataType: "json",
+    error: function(jqXHR, textStatus, errorThrown) {
+       $("#warning-message").html("An error occured. "+errorThrown);
+       $("#warning-message-box").show("fast");
+       ab.prop("disabled", false);
+       ab.html("Go!");
+    }
+  });
  });
 });
 </script>
@@ -51,7 +97,10 @@ $(document).ready(function() {
 
 
 <p>
+<div class="input-append">
   <input class="span4" id="long_url" type="text" placeholder="Paste URL">
+  <span class="add-on"><i id="validity-status" class="icon-question-sign"></i></span>
+</div>
 </p>
 <p>
   <button id="shorten" class="btn" type="button">Go!</button>
@@ -60,7 +109,7 @@ $(document).ready(function() {
 <div id="shortened_url" style="display:none">
 	<p>Shortened URL: </p>
 
-	<p><input class="span4" id="short_url" type="text"></p>
+	<p><input class="span4" id="short_url" type="text"> <a id="edit_short_url" href="#"><i class="icon-edit"></i></a></p>
 
 </div>
 
