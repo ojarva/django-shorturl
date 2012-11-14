@@ -29,8 +29,11 @@ class Url(models.Model):
         get_latest_by = "created"
         ordering = ["-created", "-modified"]
 
-    def get_short_url(self):
+    def get_short_name(self):
         return "https://%s/%s" % (settings.SHORTURL_DOMAIN, self.short_name)
+
+    def get_short_url(self):
+        return "https://%s/%s" % (settings.SHORTURL_DOMAIN, self.short_url)
 
     def get_destination_url(self):
         return get_destination_url(self.destination_url)
