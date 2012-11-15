@@ -18,12 +18,12 @@ class Url(models.Model):
     last_access = models.DateTimeField(null=True, blank=True)
     active = models.BooleanField(default=True)
 
-    status_last_working = models.DateTimeField(null=True, blank=True)
-    status_working_since = models.DateTimeField(null=True, blank=True)
-    status_last_fail = models.DateTimeField(null=True, blank=True)
-    status_current = models.BooleanField(default=False)
-    status_last_error = models.TextField(null=True, blank=True)
-    status_fail_count = models.IntegerField(default=0)
+    status_last_working = models.DateTimeField(null=True, blank=True, help_text="Last time url was accessible")
+    status_working_since = models.DateTimeField(null=True, blank=True, help_text="URL has been accessible from this date")
+    status_last_fail = models.DateTimeField(null=True, blank=True, help_text="Last time URL was not accessible")
+    status_current = models.BooleanField(default=False, help_text="Current status")
+    status_last_error = models.TextField(null=True, blank=True, help_text="Last error message")
+    status_fail_count = models.IntegerField(default=0, help_text="Number of failures")
 
     class Meta:
         get_latest_by = "created"
