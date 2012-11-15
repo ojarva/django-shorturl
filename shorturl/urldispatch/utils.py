@@ -59,7 +59,7 @@ def test_url(destination_url):
             fail("Can't resolve DNS name")
         except socket.timeout:
             fail("Connection timed out")
-        except socket.herror, err:
+        except (socket.herror, socket.error), err:
             fail(str(err))
 
     if parsed_destination.scheme.startswith("http"):
