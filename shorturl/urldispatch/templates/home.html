@@ -15,6 +15,9 @@ function check_url_validity() {
  }
  set_vd_class("icon-refresh", "Refreshing...");
  long_url = $("#long_url").val();
+ if (long_url.length < 4) {
+  return;
+ }
  validity_ajax = $.ajax({
     type: "POST",
     url: "/urlcheck",
@@ -34,6 +37,8 @@ function check_url_validity() {
  });
 }
 
+var lazy_url_validity = _.debounce(check_url_validity, 250);
+
 $(document).ready(function() {
  $("#url_validation_status").tooltip({title: "URL validation"});
  var ab = $("#shorten");
@@ -43,10 +48,10 @@ $(document).ready(function() {
   if ($(this).val().length > 4) {
    ab.prop("disabled", false);
    ab.html("Go!");
-   check_url_validity();
+   lazy_url_validity();
   } else if ($(this).val().length == 0) {
    ab.prop("disabled", true);
-   ab.html("Paste URL");
+   ab.html("Go!");
   } else {
    ab.prop("disabled", true);
    ab.html("Too short");
@@ -95,7 +100,7 @@ $(document).ready(function() {
 {% endblock %}
 {% block content %}
       <div class="jumbotron">
-        <h1>Enter URL</h1>
+        <h1>Paste URL</h1>
 
 <div id="warning-message-box" class="alert" style="display:none">
   <strong>Warning!</strong> <span id="warning-message"></span>
