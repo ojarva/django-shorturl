@@ -113,8 +113,8 @@ def add(request):
         return {"success": False, "message": "Invalid URL"}
 
     try:
-        obj = Url.objects.get(destination_url=url)
-    except:
+        obj = Url.objects.get(destination_url=url, username=username)
+    except Url.DoesNotExist:
         obj = get_unique_id(url, username)
 
     return {"success": True, "url": "http://%s/%s" % (settings.SHORTURL_DOMAIN, obj.short_url), "edit_url": "/edit/%s" % obj.short_url }
