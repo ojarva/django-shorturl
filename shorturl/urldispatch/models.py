@@ -1,10 +1,14 @@
-from django.db import models
 from django.conf import settings
-import urllib2
-from urlparse import urlparse
+from django.db import models
+from django.template.defaultfilters import slugify
 from django.utils.timezone import now
+
+import urllib2
 import socket
+
+from urlparse import urlparse
 from utils import test_url, get_destination_url
+
 
 class Url(models.Model):
     username = models.CharField(max_length=50)
@@ -64,3 +68,20 @@ class Url(models.Model):
         for item in ["status_fail_count", "status_current", "status_last_error", "status_last_working", "status_last_fail", "status_working_since"]:
             data[item] = getattr(self, item)
         return data
+
+    def validate_short_name(self, url, save=False):
+        short_name = slugify(url)
+        short_name_count = Url.objects.filter(short_name=short_name).count()
+        short_url_count = Url.objects.filter(short_url=short_name).count()
+
+        if short_name in settings.RESERVED_URLS:
+            return "That URL is reserved"
+        elif short_name != self.short_url and len(short_name) < 7:
+            return "That's too short (<7 characters)"
+        elif (short_name != self.short_name and short_name_count > 0) or (short_name != self.short_url and short_url_count > 0):
+            return "Sorry! That URL already exists"
+        else:
+            if save:
+                self.short_name = short_name
+                self.save()
+            return True

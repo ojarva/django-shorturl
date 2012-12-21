@@ -1,5 +1,52 @@
 {% extends "base.html" %}
 
+{% block header %}
+<script type="text/javascript">
+var validity_ajax;
+function set_vd_class(add_class, title) {
+ var vd = $("#validity-status");
+ vd.removeClass().addClass(add_class);
+ $("#url_validation_status").data("tooltip").options.title = title;
+}
+
+function check_url_validity() {
+ if (typeof validity_ajax != "undefined") {
+  validity_ajax.abort();
+ }
+ set_vd_class("icon-refresh", "Refreshing...");
+ short_name = $("#id_short_name").val();
+
+ validity_ajax = $.ajax({
+    type: "POST",
+    url: "{% url urlcheck_shortname item.short_url %}",
+    data: {"short_name": short_name},
+    timeout: 2000,
+    success: function(data) {
+     if (data.valid) {
+       set_vd_class("icon-ok-sign", "Short name is valid");
+     } else {
+       set_vd_class("icon-remove-sign", "Short name is invalid");
+     }
+    },
+    error: function() {
+     set_vd_class("icon-exclamation-sign", "An error occured");
+    },
+    dataType: "json"
+ });
+}
+
+var lazy_url_validity = _.debounce(check_url_validity, 250);
+
+$(document).ready(function() {
+ $("#url_validation_status").tooltip({title: "URL validation"});
+ $("#id_short_name").keyup(function() {
+  lazy_url_validity();
+ });
+});
+
+</script>
+{% endblock %}
+
 {% block content %}
 
 <h2>Item: <a href="{{ item.get_short_url }}">{{ item.get_short_url }}</a></h2>
@@ -19,15 +66,24 @@
 {% endif %}
 
 <form method="post" action="{% url edit short_url %}">
+{% csrf_token %}
+<p><label for="id_subject">Short name:</label>
 
- {% csrf_token %}
-<table class="table">
-{{ form }}
-<tr>
-<td><a href="{% url items %}" class="btn">Back</a></td>
-<td><input type="submit" value="Update" class="btn"></td>
-<td></td>
-</tr>
-</table>
+{{ form.short_name.errors }}
+<div class="input-append">
+  {{ form.short_name }}
+  <span id="url_validation_status" class="add-on"><i id="validity-status" class="icon-question-sign"></i></span>
+</div>
+
+
+</p>
+
+<input style="display:none" checked="checked" type="checkbox" name="active" id="id_active" />
+
+<p>
+<a href="{% url items %}" class="btn">Back</a>
+<input type="submit" value="Save" class="btn btn-primary">
+</p>
+
 </form>
 {% endblock %}

@@ -8,9 +8,7 @@ from django.http import HttpResponse, HttpResponseRedirect, Http404
 from django.shortcuts import get_object_or_404
 from django.shortcuts import render_to_response
 from django.template import RequestContext
-from django.template.defaultfilters import slugify
 from django.utils.timezone import now
-from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods, require_POST, require_safe
 
 import datetime
@@ -63,26 +61,13 @@ def edit_url(request, short_url):
     if request.method == "POST":
         form = EditForm(request.POST)
         if form.is_valid():
-           short_name = slugify(form.cleaned_data["short_name"])
-           short_name_count = Url.objects.filter(short_name=short_name).count()
-           short_url_count = Url.objects.filter(short_url=short_name).count()
-
-           if short_name in settings.RESERVED_URLS:
-               errors = form._errors.setdefault("short_name", ErrorList())
-               errors.append("That URL is reserved")
-           elif short_name != object.short_url and len(short_name) < 7:
-               errors = form._errors.setdefault("short_name", ErrorList())
-               errors.append("That's too short (<7 characters)")
-           elif (short_name != object.short_name and short_name_count > 0) or (short_name != object.short_url and short_url_count > 0):
-               errors = form._errors.setdefault("short_name", ErrorList())
-               errors.append("Sorry! That URL already exists")
-           else:
-               object.short_name = short_name
-               object.active = form.cleaned_data["active"]
-               object.save()
-
-               # Form contents changed - recreate it to update page.
-               form = EditForm({"short_name": object.short_name, "active": object.active})
+            short_name = form.cleaned_data["short_name"]
+            status = object.validate_short_name(short_name, True)
+            if status == True:
+                return HttpResponseRedirect(reverse("urldispatch.views.edit_url", args=(short_url,)))
+            else:
+                errors = form._errors.setdefault("short_name", ErrorList())
+                errors.append(status)
     else:
         form = EditForm({"short_name": object.short_name, "active": object.active})
 
@@ -90,7 +75,24 @@ def edit_url(request, short_url):
 
 @require_POST
 @login_required
-@csrf_exempt
+@ajax_request
+def urlcheck_shortname(request, short_url):
+    username = request.user.username
+    url = request.POST.get("short_name", None)
+    if not url:
+        return { "valid": False }
+
+    obj = get_object_or_404(Url, short_url=short_url)
+    if obj.username != username:
+        raise PermissionDenied("That's not your item")
+
+    status = obj.validate_short_name(url)
+    if status == True:
+        return {"valid": True}
+    return {"valid": False}        
+
+@require_POST
+@login_required
 @ajax_request
 def urlcheck(request):
     url = request.POST.get("long_url", None)
@@ -104,7 +106,6 @@ def urlcheck(request):
 
 @require_POST
 @login_required
-@csrf_exempt
 @ajax_request
 def add(request):
     username = request.user.username
